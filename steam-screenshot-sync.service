@@ -20,4 +20,4 @@ ProtectHome=read-only
 ReadWritePaths=%h/.config/rclone %h/.cache/rclone
 
 [Install]
-WantedBy=default.target
+WantedBy=steam-screenshot-sync.path

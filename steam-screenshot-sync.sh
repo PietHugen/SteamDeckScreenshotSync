@@ -4,7 +4,7 @@
 # to Google Drive with readable game names in filenames
 
 STEAM_SCREENSHOTS="$HOME/.local/share/Steam/userdata/*/760/remote/*/screenshots/"
-GDRIVE_PATH="gdrive:Screenshots/"
+GDRIVE_PATH="gdrive:SteamDeck/Screenshots/"
 
 # Cache for game names to avoid repeated API calls
 declare -A GAME_CACHE

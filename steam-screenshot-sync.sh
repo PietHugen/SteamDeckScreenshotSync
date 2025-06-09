@@ -56,7 +56,7 @@ find $STEAM_SCREENSHOTS -name "*.jpg" -o -name "*.png" | while read file; do
             echo "Uploading as: $new_filename"
             
             # Upload to Google Drive with metadata
-            if rclone copy "$file" "$GDRIVE_PATH" --metadata-set "game=$game_name" --metadata-set "appid=$appid"; then
+            if ~/bin/rclone copyto "$file" "$GDRIVE_PATH$new_filename" --metadata-set "game=$game_name" --metadata-set "appid=$appid"; then
                 echo "✓ Upload successful"
             else
                 echo "✗ Upload failed"
@@ -66,7 +66,7 @@ find $STEAM_SCREENSHOTS -name "*.jpg" -o -name "*.png" | while read file; do
             echo "Uploading without game name..."
             
             # Upload without game name if App ID extraction fails
-            if rclone copy "$file" "$GDRIVE_PATH"; then
+            if ~/bin/rclone copy "$file" "$GDRIVE_PATH"; then
                 echo "✓ Upload successful (no game name)"
             else
                 echo "✗ Upload failed"

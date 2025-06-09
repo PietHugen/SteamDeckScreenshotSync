@@ -31,7 +31,7 @@ echo "Upload destination: $GDRIVE_PATH"
 
 # Find and process all new screenshot files
 # This script is triggered by systemd path units when directories change
-find $STEAM_SCREENSHOTS -name "*.jpg" -o -name "*.png" | while read file; do
+find $STEAM_SCREENSHOTS -type f \( -name "*.jpg" -o -name "*.png" \) -not -path "*/thumbnails/*" | while read file; do
     # Check if file was recently created (within last 5 minutes)
     # This helps avoid reprocessing old files on service restart
     if [[ $(find "$file" -mmin -5 2>/dev/null) ]]; then

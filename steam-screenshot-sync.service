@@ -1,6 +1,7 @@
 [Unit]
 Description=Steam Screenshot Auto-Sync with Game Names
-Documentation=https://github.com/yourusername/steam-screenshot-sync
+Documentation=https://github.com/PietHugen/SteamDeckScreenshotSync
+
 After=graphical-session.target
 Wants=graphical-session.target
 

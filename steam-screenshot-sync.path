@@ -1,6 +1,6 @@
 [Unit]
 Description=Watch Steam screenshot directories for changes
-Documentation=https://github.com/yourusername/steam-screenshot-sync
+Documentation=https://github.com/PietHugen/SteamDeckScreenshotSync
 
 [Path]
 # Monitor Steam's screenshot directories for modifications

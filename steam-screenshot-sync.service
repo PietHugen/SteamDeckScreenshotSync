@@ -1,15 +1,12 @@
 [Unit]
 Description=Steam Screenshot Auto-Sync with Game Names
+Documentation=https://github.com/yourusername/steam-screenshot-sync
 After=graphical-session.target
 Wants=graphical-session.target
 
 [Service]
-Type=simple
+Type=oneshot
 ExecStart=%h/bin/steam-screenshot-sync.sh
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
 
 # Environment variables (if needed)
 Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin

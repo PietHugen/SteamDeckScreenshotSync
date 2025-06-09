@@ -19,22 +19,9 @@ This tool monitors Steam's default screenshot directory and automatically upload
 
 - Linux system (tested on Steam Deck)
 - `rclone` configured with Google Drive access
-- `inotify-tools` package
 - `jq` for JSON parsing
 - `curl` for API requests
-
-### Install dependencies
-
-```bash
-# On Steam Deck / Arch Linux
-sudo pacman -S inotify-tools jq curl
-
-# On Ubuntu/Debian
-sudo apt install inotify-tools jq curl
-
-# On Fedora
-sudo dnf install inotify-tools jq curl
-```
+- `systemd` (built into most Linux distributions)
 
 ### Configure rclone
 
@@ -69,16 +56,17 @@ rclone config
    cp steam-screenshot-sync.sh ~/bin/
    ```
 
-5. **Install the systemd service**:
+5. **Install the systemd service and path unit**:
    ```bash
    cp steam-screenshot-sync.service ~/.config/systemd/user/
+   cp steam-screenshot-sync.path ~/.config/systemd/user/
    systemctl --user daemon-reload
-   systemctl --user enable steam-screenshot-sync.service
+   systemctl --user enable steam-screenshot-sync.path
    ```
 
-6. **Start the service**:
+6. **Start the path monitoring**:
    ```bash
-   systemctl --user start steam-screenshot-sync.service
+   systemctl --user start steam-screenshot-sync.path
    ```
 
 ## Configuration
@@ -121,20 +109,26 @@ Uploaded as: `Half_Life_2_20241209142305_1.jpg`
 ## Managing the Service
 
 ```bash
-# Check service status
+# Check path monitoring status
+systemctl --user status steam-screenshot-sync.path
+
+# Check service status (runs when triggered)
 systemctl --user status steam-screenshot-sync.service
 
 # View logs
 journalctl --user -u steam-screenshot-sync.service -f
 
-# Stop the service
-systemctl --user stop steam-screenshot-sync.service
+# Stop path monitoring
+systemctl --user stop steam-screenshot-sync.path
 
-# Restart the service
-systemctl --user restart steam-screenshot-sync.service
+# Restart path monitoring
+systemctl --user restart steam-screenshot-sync.path
 
 # Disable auto-start
-systemctl --user disable steam-screenshot-sync.service
+systemctl --user disable steam-screenshot-sync.path
+
+# Manually trigger the sync (for testing)
+systemctl --user start steam-screenshot-sync.service
 ```
 
 ## Troubleshooting
@@ -142,6 +136,7 @@ systemctl --user disable steam-screenshot-sync.service
 ### Service won't start
 ```bash
 # Check for errors
+journalctl --user -u steam-screenshot-sync.path
 journalctl --user -u steam-screenshot-sync.service
 
 # Verify script permissions
@@ -149,6 +144,9 @@ ls -la ~/bin/steam-screenshot-sync.sh
 
 # Test script manually
 ~/bin/steam-screenshot-sync.sh
+
+# Check if path monitoring is active
+systemctl --user is-active steam-screenshot-sync.path
 ```
 
 ### Screenshots not uploading
@@ -174,12 +172,15 @@ ls -la ~/bin/steam-screenshot-sync.sh
 
 ## How It Works
 
-1. **inotifywait** monitors Steam's screenshot directories for new files
-2. When a screenshot file (`.jpg` or `.png`) is created, the script extracts the **App ID** from the folder path
-3. The **Steam Web API** is queried to get the human-readable game name
-4. Game names are **cached** to avoid repeated API calls
-5. The file is uploaded to Google Drive with the game name prefixed to the filename
-6. **Metadata** (game name and App ID) is added to the uploaded file
+1. **systemd path unit** monitors Steam's userdata directory for any modifications
+2. When changes are detected, the **service unit** is triggered automatically
+3. The script scans for recent screenshot files (`.jpg` or `.png`) and extracts the **App ID** from the folder path
+4. The **Steam Web API** is queried to get the human-readable game name
+5. Game names are **cached** to avoid repeated API calls
+6. The file is uploaded to Google Drive with the game name prefixed to the filename
+7. **Metadata** (game name and App ID) is added to the uploaded file
+
+This approach uses systemd's built-in file monitoring instead of `inotify-tools`, making it more suitable for immutable systems like SteamOS.
 
 ## File Structure
 
@@ -187,7 +188,8 @@ ls -la ~/bin/steam-screenshot-sync.sh
 steam-screenshot-sync/
 ├── README.md
 ├── steam-screenshot-sync.sh          # Main script
-└── steam-screenshot-sync.service     # Systemd service file
+├── steam-screenshot-sync.service     # Systemd service file (triggered by path unit)
+└── steam-screenshot-sync.path        # Systemd path unit (monitors for changes)
 ```
 
 ## Contributing

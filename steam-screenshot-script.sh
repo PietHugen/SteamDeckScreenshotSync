@@ -4,7 +4,7 @@
 # to Google Drive with readable game names in filenames
 
 STEAM_SCREENSHOTS="$HOME/.local/share/Steam/userdata/*/760/remote/*/screenshots/"
-GDRIVE_PATH="gdrive:SteamDeck/Screenshots/"
+GDRIVE_PATH="gdrive:Screenshots/"
 
 # Cache for game names to avoid repeated API calls
 declare -A GAME_CACHE
@@ -25,17 +25,17 @@ get_game_name() {
     echo "$game_name"
 }
 
-echo "Starting Steam screenshot monitor..."
-echo "Watching: $STEAM_SCREENSHOTS"
+echo "Processing Steam screenshots..."
+echo "Scanning: $STEAM_SCREENSHOTS"
 echo "Upload destination: $GDRIVE_PATH"
 
-# Monitor Steam's default screenshot directories for new files
-inotifywait -m -r -e create --format '%w%f' $STEAM_SCREENSHOTS | while read file; do
-    # Only process screenshot files (JPEG or PNG)
-    if [[ "$file" == *.jpg ]] || [[ "$file" == *.png ]]; then
-        sleep 1  # Brief delay to ensure file is fully written
-        
-        echo "New screenshot detected: $(basename "$file")"
+# Find and process all new screenshot files
+# This script is triggered by systemd path units when directories change
+find $STEAM_SCREENSHOTS -name "*.jpg" -o -name "*.png" | while read file; do
+    # Check if file was recently created (within last 5 minutes)
+    # This helps avoid reprocessing old files on service restart
+    if [[ $(find "$file" -mmin -5 2>/dev/null) ]]; then
+        echo "Processing screenshot: $(basename "$file")"
         
         # Extract App ID from Steam's folder structure
         # Path format: ~/.local/share/Steam/userdata/[userid]/760/remote/[appid]/screenshots/

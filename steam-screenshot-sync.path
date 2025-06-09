@@ -1,0 +1,12 @@
+[Unit]
+Description=Watch Steam screenshot directories for changes
+Documentation=https://github.com/yourusername/steam-screenshot-sync
+
+[Path]
+# Monitor Steam's screenshot directories for modifications
+PathModified=%h/.local/share/Steam/userdata
+# Watch recursively for any changes in the userdata directory tree
+MakeDirectory=true
+
+[Install]
+WantedBy=default.target

@@ -3,8 +3,8 @@ Description=Watch Steam screenshot directories for changes
 Documentation=https://github.com/PietHugen/SteamDeckScreenshotSync
 
 [Path]
-# Monitor Steam's screenshot directories specifically
-PathModified=%h/.local/share/Steam/userdata/*/760/remote/*/screenshots
+# Monitor the screenshots datafile for changes. The longer number is probably variable so could be different between steamdecks
+PathChanged=%h/.local/share/Steam/userdata/865713241/760/screenshots.vdf
 
 [Install]
 WantedBy=default.target

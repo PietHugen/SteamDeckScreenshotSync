@@ -9,15 +9,5 @@ Wants=graphical-session.target
 Type=oneshot
 ExecStart=%h/bin/steam-screenshot-sync.sh
 
-# Environment variables (if needed)
-Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
-
-# Security settings
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=%h/.config/rclone %h/.cache/rclone
-
 [Install]
 WantedBy=steam-screenshot-sync.path

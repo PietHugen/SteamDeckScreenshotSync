@@ -1,0 +1,25 @@
+[Unit]
+Description=Steam Screenshot Auto-Sync with Game Names
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/bin/steam-screenshot-sync.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Environment variables (if needed)
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=%h/.config/rclone %h/.cache/rclone
+
+[Install]
+WantedBy=default.target

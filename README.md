@@ -14,12 +14,9 @@ Automatically upload Steam Deck screenshots to Google Drive with game names in f
 ## Prerequisites
 
 - Steam Deck running SteamOS or Linux with systemd
-- Install required tools:
+- `jq` installed (for JSON parsing - should be preinstalled on Steam Deck)
+- Install rclone (binary method) to ~/bin:
   ```bash
-  # Install jq for JSON parsing
-  sudo pacman -S jq
-  
-  # Install rclone (binary method) to ~/bin
   mkdir -p ~/bin
   curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip
   unzip rclone-current-linux-amd64.zip

@@ -9,6 +9,15 @@ GDRIVE_PATH="gdrive:SteamDeck/Screenshots/"
 # Cache for game names to avoid repeated API calls
 declare -A GAME_CACHE
 
+# Create lock to prevent concurrent executions
+LOCK_FILE="/tmp/steam-screenshot-sync.lock"
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+    echo "Previous instance still running. Exiting."
+    exit 0
+fi
+trap 'rm -f "$LOCK_FILE"' EXIT
+
 # Function to get game name from Steam App ID
 get_game_name() {
     local appid=$1

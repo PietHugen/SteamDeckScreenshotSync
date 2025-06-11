@@ -19,8 +19,14 @@ Automatically upload Steam Deck screenshots to Google Drive with game names in f
   # Install jq for JSON parsing
   sudo pacman -S jq
   
-  # Install rclone for Google Drive sync using precompiled binary
-  sudo -v ; curl https://rclone.org/install.sh | sudo bash
+  # Install rclone (binary method) to ~/bin
+  mkdir -p ~/bin
+  curl -O https://downloads.rclone.org/rclone-current-linux-amd64.zip
+  unzip rclone-current-linux-amd64.zip
+  cd rclone-*-linux-amd64
+  cp rclone ~/bin/
+  cd ..
+  rm -rf rclone-*
   ```
 
 ## Installation
@@ -45,10 +51,10 @@ cp steam-screenshot-sync.* ~/.config/systemd/user/
    ```
    Name your remote `gdrive` or update the script*
 
-2. Make script executable and install:
+2. Make script executable and install to ~/bin:
    ```bash
    chmod +x steam-screenshot-sync.sh
-   sudo cp steam-screenshot-sync.sh /usr/local/bin/
+   cp steam-screenshot-sync.sh ~/bin/
    ```
 
 ## Activation

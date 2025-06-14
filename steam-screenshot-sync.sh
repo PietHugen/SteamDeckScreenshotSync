@@ -1,87 +1,83 @@
 #!/bin/bash
-# Steam Screenshot Auto-Sync with Game Names
-# Monitors Steam's default screenshot directory and uploads new screenshots
-# to Google Drive with readable game names in filenames
+# Steam Screenshot Web Upload Service
+# Now with queued uploads and direct web service integration
 
-STEAM_SCREENSHOTS="$HOME/.local/share/Steam/userdata/*/760/remote/*/screenshots/"
-GDRIVE_PATH="gdrive:SteamDeck/Screenshots/"
+STEAM_USERDATA="$HOME/.local/share/Steam/userdata"
+WEB_SERVICE_ENDPOINT="https://your-web-service-upload.com" # REPLACE WITH ACTUAL ENDPOINT
+QUEUE_DIR="$HOME/screenshots_queue"
+FAILED_DIR="$HOME/screenshots_failed"
+LOG_FILE="$HOME/screenshots_sync.log"
+LOCK_FILE="/tmp/steam-sys-sync.lock"
 
-# Cache for game names to avoid repeated API calls
-declare -A GAME_CACHE
+# Find Steam user ID
+user_id=$(find "$STEAM_USERDATA" -maxdepth 1 -type d -name '[1-9]*' | head -n1)
+SCREENSHOT_DIR="${user_id}/760/remote"
+
+# Create required directories
+mkdir -p "$QUEUE_DIR" "$FAILED_DIR"
+touch "$LOG_FILE"
 
 # Create lock to prevent concurrent executions
-LOCK_FILE="/tmp/steam-screenshot-sync.lock"
 exec 9>"$LOCK_FILE"
 if ! flock -n 9; then
-    echo "Previous instance still running. Exiting."
+    echo "Already running. Exiting." | tee -a "$LOG_FILE"
     exit 0
 fi
 trap 'rm -f "$LOCK_FILE"' EXIT
 
-# Function to get game name from Steam App ID
-get_game_name() {
-    local appid=$1
-    
-    # Check cache first to avoid repeated API calls
-    if [[ -n "${GAME_CACHE[$appid]}" ]]; then
-        echo "${GAME_CACHE[$appid]}"
-        return
-    fi
-    
-    # Fetch game name from Steam Web API and cache the result
-    local game_name=$(curl -s "https://store.steampowered.com/api/appdetails?appids=$appid" | jq -r ".\"$appid\".data.name" 2>/dev/null || echo "Unknown_Game_$appid")
-    GAME_CACHE[$appid]="$game_name"
-    echo "$game_name"
-}
-
-echo "Processing Steam screenshots..."
-echo "Scanning: $STEAM_SCREENSHOTS"
-echo "Upload destination: $GDRIVE_PATH"
-
-# Find and process all new screenshot files
-# This script is triggered by systemd path units when directories change
-find $STEAM_SCREENSHOTS -type f \( -name "*.jpg" -o -name "*.png" \) -not -path "*/thumbnails/*" | while read file; do
-    # Check if file was recently created (within last 5 minutes)
-    # This helps avoid reprocessing old files on service restart
-    if [[ $(find "$file" -mmin -5 2>/dev/null) ]]; then
-        echo "Processing screenshot: $(basename "$file")"
-        
-        # Extract App ID from Steam's folder structure
-        # Path format: ~/.local/share/Steam/userdata/[userid]/760/remote/[appid]/screenshots/
-        appid=$(echo "$file" | grep -oP '(?<=remote/)\d+(?=/screenshots)')
+# Setup inotifywait to detect new files
+inotifywait -m -e moved_to --format "%w%f" "$SCREENSHOT_DIR" | while read new_file; do    
+    # Process only image files
+    if [[ $new_file =~ \.(jpg|png)$ ]]; then
+        filename=$(basename "$new_file")
+        appid=$(echo "$new_file" | sed -n 's|.*remote/\([0-9]\+\)/screenshots/.*|\1|p')
         
         if [ -n "$appid" ]; then
-            echo "App ID: $appid"
-            
-            # Get human-readable game name
-            game_name=$(get_game_name "$appid")
-            echo "Game: $game_name"
-            
-            # Clean game name for filename (remove spaces and special characters)
-            clean_name=$(echo "$game_name" | tr ' /' '_' | tr -cd '[:alnum:]_-')
-            filename=$(basename "$file")
-            new_filename="${clean_name}_${filename}"
-            
-            echo "Uploading as: $new_filename"
-            
-            # Upload to Google Drive with metadata
-            if ~/bin/rclone copyto "$file" "$GDRIVE_PATH$new_filename" --metadata-set "game=$game_name" --metadata-set "appid=$appid"; then
-                echo "✓ Upload successful"
-            else
-                echo "✗ Upload failed"
+            # Unique queue filename to prevent collisions
+            queue_file="${appid}_$(date +%s%N)_${filename}"
+            if mv "$new_file" "$QUEUE_DIR/$queue_file"; then
+                echo "$(date "+%F %T"): Queued $filename (AppID:$appid)" | tee -a "$LOG_FILE"
             fi
         else
-            echo "⚠ Could not determine App ID from path: $file"
-            echo "Uploading without game name..."
-            
-            # Upload without game name if App ID extraction fails
-            if ~/bin/rclone copy "$file" "$GDRIVE_PATH"; then
-                echo "✓ Upload successful (no game name)"
+            mv "$new_file" "$QUEUE_DIR/${filename}"
+            echo "$(date "+%F %T"): Queued without AppID: $filename" | tee -a "$LOG_FILE"
+        fi
+    fi
+done &
+
+# Upload worker (persistent loop)
+while true; do
+    for queued_file in "$QUEUE_DIR"/*; do
+        [ -e "$queued_file" ] || continue
+        filename=$(basename "$queued_file")
+        appid=$(echo "$filename" | sed -n 's/^\([0-9]\+\)_.*/\1/p')
+        
+        # Process file with app ID
+        if [[ "$appid" =~ ^[0-9]+$ ]]; then
+            if curl -sf -F "screenshot=@$queued_file" -F "appid=$appid" "$WEB_SERVICE_ENDPOINT"; then
+                echo "$(date "+%F %T"): Uploaded $filename" | tee -a "$LOG_FILE"
+                rm -f "$queued_file"
             else
-                echo "✗ Upload failed"
+                mkdir -p "${FAILED_DIR}/$(date +%F)"
+                mv "$queued_file" "${FAILED_DIR}/$(date +%F)/${filename}"
+                echo "$(date "+%F %T"): Failed upload, moved $filename to fails" | tee -a "$LOG_FILE"
+            fi
+        
+        # Process files without app ID
+        else
+            if curl -sf -F "screenshot=@$queued_file" "$WEB_SERVICE_ENDPOINT"; then
+                rm -f "$queued_file"
+                echo "$(date "+%F %T"): Uploaded file without AppID: $filename" | tee -a "$LOG_FILE"
+            else
+                mkdir -p "${FAILED_DIR}/$(date +%F)"
+                mv "$queued_file" "${FAILED_DIR}/$(date +%F)/${filename}"
+                echo "$(date "+%F %T"): Failed upload (no AppID), moved $filename to fails" | tee -a "$LOG_FILE"
             fi
         fi
-        
-        echo "---"
-    fi
+        sleep 0.5 # Throttle uploads
+    done
+    sleep 5
 done
+
+# Main cleanup
+wait

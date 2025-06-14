@@ -1,5 +1,5 @@
 [Unit]
-Description=Watch Steam screenshot directories for changes
+Description=Watch Steam screenshot directories for changes (Legacy version - DISABLED)
 Documentation=https://github.com/PietHugen/SteamDeckScreenshotSync
 
 [Path]

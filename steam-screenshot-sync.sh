@@ -25,24 +25,34 @@ if ! flock -n 9; then
 fi
 trap 'rm -f "$LOCK_FILE"' EXIT
 
-# Setup inotifywait to detect new files
-inotifywait -m -e moved_to --format "%w%f" "$SCREENSHOT_DIR" | while read new_file; do    
-    # Process only image files
-    if [[ $new_file =~ \.(jpg|png)$ ]]; then
+# Polling interval (seconds)
+POLL_INTERVAL=2
+
+# Initialize last poll time
+last_poll_time=$(date +%s)
+
+# File scanner (replaces inotify)
+while true; do
+    # Find screenshots modified since last poll
+    find "$SCREENSHOT_DIR" -type f \( -iname "*.jpg" -o -iname "*.png" \) -newermt "@$last_poll_time" -print0 | while read -r -d $'\0' new_file; do
         filename=$(basename "$new_file")
         appid=$(echo "$new_file" | sed -n 's|.*remote/\([0-9]\+\)/screenshots/.*|\1|p')
         
         if [ -n "$appid" ]; then
-            # Unique queue filename to prevent collisions
             queue_file="${appid}_$(date +%s%N)_${filename}"
             if mv "$new_file" "$QUEUE_DIR/$queue_file"; then
                 echo "$(date "+%F %T"): Queued $filename (AppID:$appid)" | tee -a "$LOG_FILE"
             fi
         else
-            mv "$new_file" "$QUEUE_DIR/${filename}"
-            echo "$(date "+%F %T"): Queued without AppID: $filename" | tee -a "$LOG_FILE"
+            if mv "$new_file" "$QUEUE_DIR/${filename}"; then
+                echo "$(date "+%F %T"): Queued without AppID: $filename" | tee -a "$LOG_FILE"
+            fi
         fi
-    fi
+    done
+    
+    # Update poll time
+    last_poll_time=$(date +%s)
+    sleep "$POLL_INTERVAL"
 done &
 
 # Upload worker (persistent loop)

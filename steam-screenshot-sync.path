@@ -1,10 +1,12 @@
 [Unit]
-Description=Watch Steam screenshot directories for changes (Legacy version - DISABLED)
+Description=Watch Steam screenshot directory for changes
 Documentation=https://github.com/PietHugen/SteamDeckScreenshotSync
+PartOf=steam-screenshot-sync.service
 
 [Path]
-# Monitor the screenshots datafile for changes. The longer number is probably variable so could be different between steamdecks
+# Monitor the screenshots datafile for changes
 PathChanged=%h/.local/share/Steam/userdata/865713241/760/screenshots.vdf
+Unit=steam-screenshot-sync.service
 
 [Install]
 WantedBy=default.target

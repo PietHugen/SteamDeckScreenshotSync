@@ -1,17 +1,14 @@
 [Unit]
 Description=Steam Screenshot Web Upload Service
 Documentation=https://github.com/PietHugen/SteamDeckScreenshotSync
-
 After=graphical-session.target
 Wants=graphical-session.target
 
 [Service]
-Type=simple
-Restart=always
-RestartSec=5
+Type=oneshot
 StartLimitIntervalSec=10
 StartLimitBurst=20
-ExecStart=/usr/bin/bash -c "%h/bin/steam-screenshot-sync.sh"
+ExecStart=%h/bin/steam-screenshot-sync.sh
 
 [Install]
 WantedBy=default.target
